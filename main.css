@@ -1,0 +1,24 @@
+html, head, body {
+  height : 100%;
+}
+
+/*.ui-content {
+  min-height: 280px;
+  padding: 0px;
+  height: 100%;
+}
+
+#map-canvas {
+  min-height: 200px;
+  min-width: 200px;
+  height: 100%;
+  width: 100%;
+}*/
+#map-page .ui-content {
+    position : absolute;
+    top      : 40px;
+    right    : 0;
+    bottom   : 30px;
+    left     : 0;
+    padding: 0px;
+}
