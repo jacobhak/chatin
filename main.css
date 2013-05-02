@@ -18,7 +18,7 @@ html, head, body {
     position : absolute;
     top      : 40px;
     right    : 0;
-    bottom   : 30px;
+    bottom   : 37px; /*default footer height*/
     left     : 0;
     padding: 0px;
 }
