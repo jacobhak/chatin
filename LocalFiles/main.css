@@ -20,5 +20,19 @@ html, head, body {
     right    : 0;
     bottom   : 37px; /*default footer height*/
     left     : 0;
-    padding: 0px;
+    padding: 0;
+}
+#loginOrRegister-page {
+
+}
+#loginFields {
+  top:50%;
+}
+#placeholder {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: rgb(0, 255, 255);
 }
