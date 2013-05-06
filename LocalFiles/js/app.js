@@ -6,9 +6,23 @@ var map;
 /** Cloudbase helper object */
 var helper;
 
+function handleLogin() {
+	var username = $("#email").val();
+	var password = $("#password").val();
+	console.log("got user: "+username+" pass: "+password);
+	loginOrRegister(username, password, function(success){
+		if (success) {
+			$.mobile.changePage("#map-page");
+			setupMap();
+		} else {
+			$("#placeholder").append("Login or register failed");
+		}
+	});
+}
+
 function initialize () {
 	google.maps.event.addDomListener(window, "load", setupMap);
-	console.log("jodu");
+	$("#loginButton").on("click",handleLogin);
 }
 
 function initCB() {

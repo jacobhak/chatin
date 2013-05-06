@@ -35,14 +35,16 @@
 	<body>
 		<div id="loginOrRegister-page" data-role="page">
 			<div id="placeholder">
-				<!-- <object data="bubbla.png" type="image/svg+xml" style="height: 50%;width: 50%"></object> -->
-				<img src="bubbla.png" style="height: 50%; margin-left: -10%"/>
-				<div id="loginFields" data-role="fieldcontain">
+				<img src="bubbla.png" style="height: 50%; margin-left: -10%"/> <!-- Placing must be done better for x-platform -->
+				<div data-role="fieldcontain">
 					<label for="email">E-mail</label>
-					<input id="email" type="email"></input>
+					<input id="email" type="email" ></input>
+				</div>
+				<div data-role="fieldcontain">
 					<label for="password">Password</label>
 					<input id="password" type="password"></input>
 				</div>
+				<button id="loginButton">Register/Login</button>
 			</div>
 		</div>
 		<div id="map-page" data-role="page">
