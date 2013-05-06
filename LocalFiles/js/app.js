@@ -19,9 +19,19 @@ function handleLogin() {
 	});
 }
 
+function handleLogout() {
+	$.mobile.changePage("#loginOrRegister-page");
+}
+
+function handleMe() {
+	$.mobile.changePage("#me-page");
+}
+
 function initialize () {
 	$("#map-page").on('pageshow', setupMap);
 	$("#loginButton").on("click",handleLogin);
+	$("#logoutButton").on("click",handleLogout);
+	$(".meButton").on("click", handleMe);
 }
 
 function initCB() {

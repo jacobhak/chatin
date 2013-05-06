@@ -53,15 +53,41 @@
 			</div>
 			<div id="map-canvas" data-role="content" >
 			</div>
-			<div data-role="footer" data-position="fixed">
+			<div data-role="footer" data-position="fixed" data-id="globalFooter">
 				<div data-role="navbar">
 					<ul>
-						<li><a href="#" onclick="loginOrRegister('jarleb', 'test')">Map</a></li>
+						<li><a href="#">Map</a></li>
 						<li><a href="#">Friends</a></li>
 						<li><a href="#">Chats</a></li>
+						<li><a href="#" class="meButton">Me</a></li>
 					</ul>
-				</div>
+				</div>				
 			</div>
+		</div>
+		<div id="friends-page" data-role="page">
+
+		</div>
+		<div id="chats-page" data-role="page">
+
+		</div>
+
+		<div id="me-page" data-role=page>
+			<div data-role="header" data-position="fixed">
+				<h1>Me</h1>
+			</div>
+			<div id="me-content" data-role="content" >
+				<button id="logoutButton">Logout</button>
+			</div>
+			<div data-role="footer" data-position="fixed" data-id="globalFooter">
+				<div data-role="navbar">
+					<ul>
+						<li><a href="#">Map</a></li>
+						<li><a href="#">Friends</a></li>
+						<li><a href="#">Chats</a></li>
+						<li><a href="#">Me</a></li>
+					</ul>
+				</div>				
+			</div>		
 		</div>
 
 	</body>
