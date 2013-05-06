@@ -69,6 +69,7 @@
 		<div id="friends-page" data-role="page">
 			<div data-role="header" data-position="fixed">
 				<h1>Friends</h1>
+				<a id="addFriendButton"href="#" data-icon="plus" class="ui-btn-right">Add</a>
 			</div>
 			<div id="friends-content" data-role="content" >
 				<ul data-role="listview">
@@ -87,6 +88,18 @@
 					</ul>
 				</div>				
 			</div>		
+		</div>
+		<div id="addFriend-page" data-role="page" data-add-back-btn="true">
+			<div data-role="header" data-position="fixed">
+				<h1>Add friend</h1>
+				<a id="confirmFriendButton" href="#" class="ui-btn-right">Confirm</a>
+			</div>
+			<div id="addFriend-content" data-role="content">
+				<div data-role="fieldcontain">
+					<label for="friendName">Friend's E-mail</label>
+					<input id="friendName" type="email"/>
+				</div>
+			</div>
 		</div>
 		<!-- CHATS PAGE -->
 		<div id="chats-page" data-role="page">

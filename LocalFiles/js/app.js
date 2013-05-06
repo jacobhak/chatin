@@ -35,6 +35,10 @@ function handleFriends() {
 	$.mobile.changePage("#friends-page");
 }
 
+function handleAddFriend() {
+	$.mobile.changePage("#addFriend-page","slideright");
+}
+
 function initialize () {
 	$("#map-page").on('pageshow', setupMap);
 	$("#loginButton").on("click",handleLogin);
@@ -42,6 +46,7 @@ function initialize () {
 	$(".meButton").on("click", handleMe);
 	$(".mapButton").on("click", handleMap);
 	$(".friendsButton").on("click", handleFriends);
+	$("#addFriendButton").on("click", handleAddFriend);
 }
 
 function initCB() {
