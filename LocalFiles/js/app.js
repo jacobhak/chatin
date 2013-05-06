@@ -13,7 +13,6 @@ function handleLogin() {
 	loginOrRegister(username, password, function(success){
 		if (success) {
 			$.mobile.changePage("#map-page");
-			setupMap();
 		} else {
 			$("#placeholder").append("Login or register failed");
 		}
@@ -21,7 +20,7 @@ function handleLogin() {
 }
 
 function initialize () {
-	google.maps.event.addDomListener(window, "load", setupMap);
+	$("#map-page").on('pageshow', setupMap);
 	$("#loginButton").on("click",handleLogin);
 }
 
@@ -134,7 +133,7 @@ function getNearbyCheckins(radius, callback) {
 }
 
 
-function setupMap () {
+function setupMap(event,ui) {
 	var pos;
 	if (navigator.geolocation) {
 		navigator.geolocation.getCurrentPosition(function(position) {
