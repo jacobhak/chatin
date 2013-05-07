@@ -49,6 +49,10 @@ function MoSyncHelper() {
 	 * a unique identifier for the device. In Tizen's case we use the IMEI
 	 */
 	this.deviceUniqueIdentifier	= window.device.uuid;
+	/**
+	 * Whether push notifications are enabled on this platform
+	 */
+	this.pushNotifications		= true;
 	
 	//this.log(window.navigator.language);
 }
@@ -60,6 +64,22 @@ function MoSyncHelper() {
 MoSyncHelper.prototype.log = function(logMessage) {
 	mosync.rlog(logMessage);
 };
+
+MoSyncHelper.prototype.getPushNotificationsPlatform = function() {
+	if ( device.platform == null ) {
+		return "";
+	}
+	var platform = device.platform.toLowerCase();
+	if ( platform == "iphone" || platform == "ipad" || platform == "ios" ) {
+		return "ios";
+	}
+	if ( platform == "android" || platform == "google" ) {
+		return "and";
+	}
+	if ( platform.indeOf("blackberry") > -1 ) {
+		return "bb";
+	}
+}
 
 /**
  * Reads a file from the device file system given the path and returns it in the form of a CBHelperAttachment structure
@@ -77,12 +97,37 @@ MoSyncHelper.prototype.prepareAttachmentFileFromPath = function(filePath, fileRe
 		
 		window.requestFileSystem(LocalFileSystem.PERSISTENT, 0, 
 			function(foundFs) {
-				mosync.rlog("found file system");
-				foundFs.root.getFile(filePath, null, 
+				foundFs.root.getFile(newFile.name, {create: false, exclusive: false}, 
 					function(foundFile) {
 						var reader = new FileReader();
 				        reader.onloadend = function(evt) {
-				            newFile.content = evt.target.result;
+				        	
+				        	try {
+				        		mosync.rlog(evt.target.result.split(',')[1]);
+				        		var binary = atob(evt.target.result.split(',')[1]);
+					        	var length = binary.length;
+					        	var ab = new ArrayBuffer(length);
+					            var ua = new Uint8Array(ab);
+					            for(var i = 0; i < length; i++) {
+					            	ua[i] = binary.charCodeAt(i);
+					            }
+					            newFile.content = new Blob( [ab], {type : "application/octet-stream"});
+				        	} catch(e) {
+				        		window.BlobBuilder = window.BlobBuilder || 
+				        		                         window.WebKitBlobBuilder || 
+				        		                         window.MozBlobBuilder || 
+				        		                         window.MSBlobBuilder;
+				        		if(e.name == 'TypeError' && window.BlobBuilder){
+				        			var bb = new BlobBuilder();
+				        			bb.append([ab]);
+				        			newFile.content = bb.getBlob("application/octet-stream");
+				        		} else if(e.name == "InvalidStateError"){
+				        			newFile.content = new Blob( [ab.buffer], {type : "application/octet-stream"});
+				        		} else{
+				        		    newFile = null  
+				        		}
+				        	}
+				        	
 				            fileReady(newFile);
 				        };
 				        reader.readAsDataURL(foundFile);
@@ -91,6 +136,7 @@ MoSyncHelper.prototype.prepareAttachmentFileFromPath = function(filePath, fileRe
 						mosync.rlog("error requesting file " + JSON.stringify(ex));
 						fileReady(null);
 					});
+				
 			}, 
 			function(ex) {
 				mosync.rlog("error requesting file system " + JSON.stringify(ex));

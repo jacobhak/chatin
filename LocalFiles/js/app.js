@@ -6,6 +6,9 @@ var map;
 /** Cloudbase helper object */
 var helper;
 
+var pushManager = new PushNotificationManager();
+var pushToken;
+
 function handleLogin() {
 	var username = $("#email").val();
 	var password = $("#password").val();
@@ -54,6 +57,12 @@ function initCB() {
 		var moSyncHelper = new MoSyncHelper();
 		helper = new CBHelper("chatin", "bb1cab8b28f7f7551c74591fe4c81332", moSyncHelper);
 		helper.setPassword(hex_md5("mopub13project"));
+
+		pushManager.register(function(token) {
+			pushToken = token;
+		}, function(error) {
+			console.log("Failed to set up push: " + JSON.stringify(error);
+		});
 	}
 }
 
@@ -79,6 +88,8 @@ function loginOrRegister(username, password, callback) {
 			if (resp.outputData.length > 0) {
 				// Correct username and password
 				user = tmpUser;
+				if (localStorage)
+					localStorage["chatin_user"] = user;
 				console.log("Correct log in");
 				callback(true);
 				return;
@@ -97,6 +108,8 @@ function loginOrRegister(username, password, callback) {
 				user = tmpUser;
 				helper.authUsername = user.username;
 				helper.authPassword = user.password;
+				if (localStorage)
+					localStorage["chatin_user"] = user;
 				console.log("Registered");
 				callback(true);
 				return;
@@ -116,14 +129,19 @@ function loginOrRegister(username, password, callback) {
  */
 function checkIn(radius, callback) {
 	var pos = map.getCenter();
-	var loc = new CBHelperCurrentLocation(pos.lat(), pos.lng(), 1);
+	var loc = new CBHelperCurrentLocation(currentPosition.coords.latitude,
+		currentPosition.coords.longitude, currentPosition.coords.altitude);
 	helper.currentLocation = loc;
 
-	var checkIn = { "radius": radius, "cb_location": loc }; // location and owner are added automatically
+	var checkIn = { "radius": radius }; // location and owner are added automatically
 	helper.insertDocument("checkins", checkIn, null, function(resp) {
 		console.log("CHECK IN Status: " + resp.httpStatus + ", EMsg: " + resp.errorMessage + ", Output: " + resp.outputString);
 		if (resp.callStatus) {
 			console.log("Checked in at " + pos.toString());
+			if (pushToken) {
+				helper.sendNotification("My position is " + pos.toString(), "nearby_" + user.username, "development");
+			}
+
 			callback(true);
 		} else {
 			console.log("Failed to check in");
@@ -142,7 +160,7 @@ function getNearbyCheckins(radius, callback) {
 	
 	var search = {
 		"cb_location": {
-			"$near": [pos.lat(), pos.lng()],
+			"$near": [currentPosition.coords.latitude, currentPosition.coords.longitude],
 			"$maxDistance": radius
 		}
 	};
@@ -154,14 +172,62 @@ function getNearbyCheckins(radius, callback) {
 		} else {
 			callback(false, []);
 		}
-	})
+	});
+}
+
+/**
+ * Gets the friends for the currently logged in user. callback is a function taking a boolean (success)
+ * and an array with friends' user names (which is empty if the call failed)
+ */
+function getFriends(callback) {
+	helper.searchDocuments({ "username": user.username }, "users", function(resp) {
+		console.log("GET FRIENDS Status: " + resp.httpStatus + ", EMsg: " + resp.errorMessage + ", Output: " + resp.outputString);
+		if (resp.callStatus && resp.outputData.length > 0) {
+			console.log("Received friends");
+			callback(true, resp.outputData[0].friends);
+		} else {
+			callback(false, []);
+		}
+	});
+}
+
+/**
+ * Given a friend's username, adds this friend to the currently logged in user's friends list.
+ * Does not check that the friend's name is a valid username nor if it exists in the friends list previously.
+ * callback is a function taking a boolean indicating success.
+ */
+function addFriend(friendUsername, callback) {
+	helper.searchDocuments({ "username": user.username }, "users", function(resp) {
+		if (!resp.callStatus)
+			return callback(false);
+
+		var newUser = resp.outputData[0];
+		newUser.friends.push(friendUsername);
+		helper.updateDocument(newUser, { "username": user.username }, "users", null, function(updResp) {
+			if (!updResp.callStatus)
+				return callback(false);
+			console.log("Successfully added friend");
+			callback(true);
+		});
+	});
+}
+
+/**
+ * Registers this device for check in notifications
+ */
+function setupCheckinNotifications() {
+	helper.registerDeviceForNotifications(pushToken, "nearby_" + user.username, function(result) {
+		console.log("Registered for checkin notifications");
+	});
 }
 
 
+var currentPosition = null;
 function setupMap(event,ui) {
 	var pos;
 	if (navigator.geolocation) {
 		navigator.geolocation.getCurrentPosition(function(position) {
+			currentPosition = position;
 			pos = new google.maps.LatLng(position.coords.latitude,position.coords.longitude);
 			if (map) map.setCenter(pos);
 		});

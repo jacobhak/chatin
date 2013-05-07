@@ -187,9 +187,9 @@ function CBHelper (appCode, appUniq, platformHelper) {
 	* 
 	* @property currentLocation
 	* @type CBHelperCurrentLocation
-	* @default {}
+	* @default null
 	*/
-    this.currentLocation		= {};
+    this.currentLocation		= null;
     
     /**
 	* If the application settings on cloudbase.io define the authentication properties then
@@ -222,6 +222,22 @@ function CBHelper (appCode, appUniq, platformHelper) {
     
     // check whether the broser supports the FormData object
     this.supportsFormData		= (window.FormData !== undefined);
+    
+    this.getCurrentLocation = function() {
+    	return this.currentLocation;
+    }
+    
+    this.getAuthUsername = function() {
+    	return this.authUsername;
+    }
+    
+    this.getAuthPassword = function() {
+    	return this.authPassword;
+    }
+    
+    this.getPlatformHelper = function() {
+    	return this.platformHelper;
+    }
 }
 
 CBHelper.prototype.defaultLogCategory = "DEFAULT";
@@ -268,7 +284,6 @@ CBHelper.prototype.registerDevice = function() {
 	url = this.generateUrl() + "/" + this.appCode + "/register";
 	
 	var pHelper = this.platformHelper;
-	pHelper.log("starting session..");
 	this.sendHttpRequest("register-device", url, params, null, null, function(parsedData) {
 		//pHelper.log("received session id: " + parsedData.outputData.sessionid);
 		CBSessionId = parsedData.outputData.sessionid;
@@ -471,6 +486,83 @@ CBHelper.prototype.downloadFile = function(fileId, responder, progress) {
 
 // /CloudBase functions
 
+// Notification functions
+
+/**
+ * Registers the current device to send and receive push notifications in a specific channel.
+ * This method will be triggered only if supported by the platform specific helper.
+ * 
+ * @param token The token returned by the original provider
+ * @param channel The notification channel to subscribe to - by default all devices are registered in the 'all' channel
+ * @param A function to receive the status of the subscription: function(sub = boolean) - true if the device was subscribed correctly
+ */
+CBHelper.prototype.registerDeviceForNotifications = function(token, channel, responder) {
+	if ( this.getPlatformHelper().pushNotifications ) {
+		var url = this.generateUrl() + "/" + this.appCode + "/notifications-register";
+		var params = {
+			"action": "subscribe",
+			"device_key": token,
+			"device_network" : this.getPlatformHelper().getPushNotificationsPlatform(),
+			"channel" : channel
+		}
+		
+		this.sendHttpRequest("notifications-register", url, params, null, null, function(resp) {
+			responder(resp.callStatus);
+		});
+	} else {
+		responder(false);
+	}
+}
+
+/**
+ * Unregisters a device from a push notification channel on cloudbase.io
+ * 
+ * @param token The unique token identifying the device
+ * @param channel The channel to unsubscribe from 
+ * @param fromAll Whether to completely remove the device from the push notifications list ( will also unsubscribe from the 'all' channel)
+ */
+CBHelper.prototype.unregisterDeficeForNotifications = function(token, channel, fromAll) {
+	if ( this.getPlatformHelper().pushNotifications ) {
+		var url = this.generateUrl() + "/" + this.appCode + "/notifications-register";
+		var params = {
+			"action": "unsubscribe",
+			"device_key": token,
+			"device_network" : this.getPlatformHelper().getPushNotificationsPlatform(),
+			"channel" : channel
+		}
+		if ( fromAll ) {
+			params.from_all = true;
+		}
+		
+		this.sendHttpRequest("notifications-register", url, params, null, null, function(resp) {
+			responder(resp.callStatus);
+		});
+	} else {
+		responder(false);
+	}
+}
+
+/**
+ * Sends a push notification to all devices subscribed to the channel - This method will work only if the 
+ * application's security settings on cloudbase.io allow client devices to push notifications
+ * 
+ * @param text The push notification content
+ * @param channel The name of the channel to push to
+ * @param iosCertificateType Whether to use the "development" or "production" certificate to send notifications to iOS devices
+ */
+CBHelper.prototype.sendNotification = function(text, channel, iosCertificateType) {
+	if ( this.getPlatformHelper().pushNotifications ) {
+		var url = this.generateUrl() + "/" + this.appCode + "/notifications";
+		var params = {
+			"channel" : channel,
+			"cert_type" : iosCertificateType,
+			"alert" : text
+		};
+		
+		this.sendHttpRequest("notifications", url, params, null, null);
+	}
+}
+
 /**
  * Sends an email to the given recipient using a template previously created on cloudbase.io.
  * Email templates can be managed from the application control panel on cloudbase.io
@@ -491,8 +583,10 @@ CBHelper.prototype.sendEmail = function(recipient, subject, templateCode, vars) 
 	};
 	
 	url = this.generateUrl() + "/" + this.appCode + "/email";
-	this.sendHttpRequest("email", url, params, null, null, responder);
+	this.sendHttpRequest("email", url, params, null, null, null);
 };
+
+// /Notification functions
 
 // CloudFunction functions
 /**
@@ -633,9 +727,9 @@ CBHelper.prototype.prepareRequestParams = function(params, additionalParams, fil
 		if (params)
 			outParams += this.prepareRequestParamBody("post_data", JSON.stringify(params));
 			
-		if (this.authUsername != null && this.authPassword != null) {
-			outParams += this.prepareRequestParamBody("cb_auth_user", this.authUsername);
-			outParams += this.prepareRequestParamBody("cb_auth_password", this.authPassword);
+		if (this.getAuthUsername() != null && this.getAuthPassword() != null) {
+			outParams += this.prepareRequestParamBody("cb_auth_user", this.getAuthUsername());
+			outParams += this.prepareRequestParamBody("cb_auth_password", this.getAuthPassword());
 		}
 		
 		if (typeof additionalParams !== 'undefined') {
@@ -644,8 +738,8 @@ CBHelper.prototype.prepareRequestParams = function(params, additionalParams, fil
 			}
 		}
 		
-		if (typeof currentLocation === 'CBHelperCurrentLocation') {
-			outParams += this.prepareRequestParamBody("current_location", JSON.stringify(this.currentLocation));
+		if ( this.getCurrentLocation() ) {
+			outParams += this.prepareRequestParamBody("location_data", JSON.stringify(this.getCurrentLocation()));
 		}
 		
 		if (files != null) {
@@ -669,9 +763,9 @@ CBHelper.prototype.prepareRequestParams = function(params, additionalParams, fil
 			formOutParams.append("post_data", JSON.stringify(params));
 		}
 		
-		if (this.authUsername != null && this.authPassword != null) {
-			formOutParams.append("cb_auth_user", this.authUsername);
-			formOutParams.append("cb_auth_password", this.authPassword);
+		if (this.getAuthUsername() != null && this.getAuthPassword() != null) {
+			formOutParams.append("cb_auth_user", this.getAuthUsername());
+			formOutParams.append("cb_auth_password", this.getAuthPassword());
 		}
 		
 		if (typeof additionalParams !== 'undefined') {
@@ -681,9 +775,9 @@ CBHelper.prototype.prepareRequestParams = function(params, additionalParams, fil
 			}
 		}
 		
-		if (typeof currentLocation === 'CBHelperCurrentLocation') {
+		if ( this.getCurrentLocation() ) {
 			//params += "&current_location=" + JSON.stringify(this.currentLocation);
-			formOutParams.append("current_location", JSON.stringify(this.currentLocation));
+			formOutParams.append("location_data", JSON.stringify(this.getCurrentLocation()));
 		}
 		
 		if (files != null) {
