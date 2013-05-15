@@ -6,8 +6,8 @@ var map;
 /** Cloudbase helper object */
 var helper;
 
-var pushManager = new PushNotificationManager();
-var pushToken;
+/** PubNub object */
+var pubnub;
 
 function handleLogin() {
 	var username = $("#email").val();
@@ -16,6 +16,13 @@ function handleLogin() {
 	loginOrRegister(username, password, function(success){
 		if (success) {
 			$.mobile.changePage("#map-page");
+
+			// Subscribe to nearby checkins in pubnub
+			pubnub.subscribe({
+				"channel": "nearby_" + username,
+				"callback": receivedNearbyCheckin
+			});
+
 		} else {
 			$("#placeholder").append("Login or register failed");
 		}
@@ -57,13 +64,12 @@ function initCB() {
 		var moSyncHelper = new MoSyncHelper();
 		helper = new CBHelper("chatin", "bb1cab8b28f7f7551c74591fe4c81332", moSyncHelper);
 		helper.setPassword(hex_md5("mopub13project"));
-
-		pushManager.register(function(token) {
-			pushToken = token;
-		}, function(error) {
-			console.log("Failed to set up push: " + JSON.stringify(error);
-		});
 	}
+
+	pubnub = PUBNUB.init({
+		publish_key   : "pub-c-ed04a441-0a05-49c6-b6d6-59254aa8e0f6",
+		subscribe_key : "sub-c-0d9718ca-bc8c-11e2-b159-02ee2ddab7fe"
+	});
 }
 
 /** User authentication */
@@ -133,21 +139,64 @@ function checkIn(radius, callback) {
 		currentPosition.coords.longitude, currentPosition.coords.altitude);
 	helper.currentLocation = loc;
 
-	var checkIn = { "radius": radius }; // location and owner are added automatically
-	helper.insertDocument("checkins", checkIn, null, function(resp) {
-		console.log("CHECK IN Status: " + resp.httpStatus + ", EMsg: " + resp.errorMessage + ", Output: " + resp.outputString);
-		if (resp.callStatus) {
-			console.log("Checked in at " + pos.toString());
-			if (pushToken) {
-				helper.sendNotification("My position is " + pos.toString(), "nearby_" + user.username, "development");
-			}
-
-			callback(true);
-		} else {
-			console.log("Failed to check in");
-			callback(false);
+	var checkIn = { "cb_owner_user": user.username, "radius": radius }; // location and owner are added automatically
+	
+	// myCheckIn is the JSON object sent over PubNub to nearby users
+	var myCheckIn = {
+		"cb_owner_user": user.username,
+		"radius": radius,
+		"cb_location": {
+			"lat": currentPosition.coords.latitude,
+			"lng": currentPosition.coords.longitude
 		}
-	})
+	};
+
+	/* After we've checked in, we want to find users nearby who checked in and let them know.
+	 * This function is used as the callback to getNearbyCheckins. */
+	var informNearbyCheckins = function(success, checkins) {
+		if (!success || checkins.length == 0) return;
+
+		for (var i = 0; i < checkins.length; i++) {
+			if (checkins[i].cb_owner_user != user.username) {
+				console.log("Informing "+checkins[i].cb_owner_user + " of my check in: " + myCheckIn);
+				pubnub.publish({
+					"channel": "nearby_" + checkins[i].cb_owner_user,
+					"message": JSON.stringify(myCheckIn)
+				});
+			}
+		}
+	}
+
+	var search = { "cb_owner_user": user.username };
+	// Check if this user already has a check in, if so, move it
+	helper.searchDocuments(search, "checkins", function(resp) {
+		if (resp.callStatus && resp.outputData.length > 0) {
+			// Update existing check in
+			helper.updateDocument(checkIn, search, "checkins", null, function(updResp) {
+				if (updResp.callStatus) {
+					console.log("Updated existing checkin");
+					getNearbyCheckins(radius, informNearbyCheckins);
+					callback(true);
+				} else {
+					console.log("Failed to update existing checkin");
+					callback(false);
+				}										
+			});
+		} else {
+			// No existing check in
+			helper.insertDocument("checkins", checkIn, null, function(resp) {
+				console.log("INSERT CHECK IN Status: " + resp.httpStatus + ", EMsg: " + resp.errorMessage + ", Output: " + resp.outputString);
+				if (resp.callStatus) {
+					console.log("Checked in at " + pos.toString());
+					getNearbyCheckins(radius, informNearbyCheckins);
+					callback(true);
+				} else {
+					console.log("Failed to check in");
+					callback(false);
+				}
+			});
+		}
+	});
 }
 
 /**
@@ -173,6 +222,17 @@ function getNearbyCheckins(radius, callback) {
 			callback(false, []);
 		}
 	});
+}
+
+/**
+ * Automatically called by PubNub when a new checkin has been received from someone nearby.
+ */
+function receivedNearbyCheckin(checkin) {
+	console.log("Received nearby checkin " + checkin);
+	//alert("GOT CHECKIN "+checkin);
+	var checkinObj = JSON.parse(checkin);
+
+	// TODO: Update map
 }
 
 /**
@@ -212,15 +272,6 @@ function addFriend(friendUsername, callback) {
 	});
 }
 
-/**
- * Registers this device for check in notifications
- */
-function setupCheckinNotifications() {
-	helper.registerDeviceForNotifications(pushToken, "nearby_" + user.username, function(result) {
-		console.log("Registered for checkin notifications");
-	});
-}
-
 
 var currentPosition = null;
 function setupMap(event,ui) {
@@ -232,6 +283,7 @@ function setupMap(event,ui) {
 			if (map) map.setCenter(pos);
 		});
 	}
+	currentPosition = { "coords": { "latitude": 59.347283, "longitude": 18.073668}};
 	pos = new google.maps.LatLng(59.347283,18.073668);
 
 	var mapOptions = {
