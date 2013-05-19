@@ -1,5 +1,5 @@
 /*
-	Main js file
+    Main js file
 */
 var map;
 
@@ -10,91 +10,100 @@ var helper;
 var pubnub;
 
 function handleLogin() {
-	var username = $("#email").val();
-	var password = $("#password").val();
-	console.log("got user: "+username+" pass: "+password);
-	loginOrRegister(username, password, function(success){
-		if (success) {
-			$.mobile.changePage("#map-page");
+    var username = $("#email").val();
+    var password = $("#password").val();
+    console.log("got user: "+username+" pass: "+password);
+    loginOrRegister(username, password, function(success){
+        if (success) {
+            $.mobile.changePage("#map-page");
 
-			// Subscribe to nearby checkins in pubnub
-			pubnub.subscribe({
-				"channel": "nearby_" + username,
-				"callback": receivedNearbyCheckin
-			});
+            // Subscribe to nearby checkins in pubnub
+            pubnub.subscribe({
+                "channel": "nearby_" + username,
+                "callback": receivedNearbyCheckin
+            });
 
-		} else {
-			$("#placeholder").append("Login or register failed");
-		}
-	});
+        } else {
+            $("#placeholder").append("Login or register failed");
+        }
+    });
+}
+
+function handleCheckIn () {
+    checkIn(10000, function(success){
+        if (success)
+            putCheckinsOnMap();
+    });
 }
 
 function handleLogout() {
-	$.mobile.changePage("#loginOrRegister-page");
+    $.mobile.changePage("#loginOrRegister-page");
 }
 
 function handleMe() {
-	$.mobile.changePage("#me-page");
+    $.mobile.changePage("#me-page");
 }
 
 function handleMap() {
-	$.mobile.changePage("#map-page");
+    $.mobile.changePage("#map-page");
 }
 
 function handleFriends() {
-	getFriends(function(success, friends) {
-		if (!success) {
-			alert("Failed to get friends list");
-			return;
-		}
+    $.mobile.changePage("#friends-page");
+    getFriends(function(success, friends) {
+        if (!success) {
+            alert("Failed to get friends list");
+            return;
+        }
 
-		$("#friends-content ul").children().remove();
-		for (var i = 0; i < friends.length; i++)
-			$("#friends-content ul").append('<li>' + friends[i] + '</li>');
+        $("#friends-content ul").children().remove();
+        for (var i = 0; i < friends.length; i++)
+            $("#friends-content ul").append('<li>' + friends[i] + '</li>');
 
-		$.mobile.changePage("#friends-page");
-		$("#friends-content ul").listview('refresh');
-	});
+
+        $("#friends-content ul").listview('refresh');
+    });
 }
 
 function handleAddFriend() {
-	$.mobile.changePage("#addFriend-page","slideright");
-	$("#confirmFriendButton").off("click").on("click", function() {
-		if ($("#friendName").val().length == 0) 
-			return;
+    $.mobile.changePage("#addFriend-page","slideright");
+    $("#confirmFriendButton").off("click").on("click", function() {
+        if ($("#friendName").val().length == 0) 
+            return;
 
-		addFriend($("#friendName").val(), function(success) {
-			if (!success)
-				alert("Failed to add friend");
-			else
-				alert("Friend added");
+        addFriend($("#friendName").val(), function(success) {
+            if (!success)
+                alert("Failed to add friend");
+            else
+                alert("Friend added");
 
-			handleFriends();
-		});
-	})
+            handleFriends();
+        });
+    })
 }
 
 function initialize () {
-	$("#map-page").on('pageshow', setupMap);
-	$("#loginButton").on("click",handleLogin);
-	$("#logoutButton").on("click",handleLogout);
-	$(".meButton").on("click", handleMe);
-	$(".mapButton").on("click", handleMap);
-	$(".friendsButton").on("click", handleFriends);
-	$("#addFriendButton").on("click", handleAddFriend);
+    $("#map-page").on('pageshow', setupMap);
+    $("#loginButton").on("click",handleLogin);
+    $("#logoutButton").on("click",handleLogout);
+    $(".meButton").on("click", handleMe);
+    $(".mapButton").on("click", handleMap);
+    $(".friendsButton").on("click", handleFriends);
+    $("#addFriendButton").on("click", handleAddFriend);
+    $("#checkInButton").on("click", handleCheckIn);
 }
 
 function initCB() {
-	if (!helper) {
-		var moSyncHelper = new MoSyncHelper();
-		helper = new CBHelper("chatin", "bb1cab8b28f7f7551c74591fe4c81332", moSyncHelper);
-		helper.setPassword(hex_md5("mopub13project"));
-	}
+    if (!helper) {
+        var moSyncHelper = new MoSyncHelper();
+        helper = new CBHelper("chatin", "bb1cab8b28f7f7551c74591fe4c81332", moSyncHelper);
+        helper.setPassword(hex_md5("mopub13project"));
+    }
 
-	pubnub = PUBNUB.init({
-		publish_key   : "pub-c-ed04a441-0a05-49c6-b6d6-59254aa8e0f6",
-		subscribe_key : "sub-c-0d9718ca-bc8c-11e2-b159-02ee2ddab7fe"
-	});
+    pubnub = PUBNUB.init({
+        publish_key   : "pub-c-ed04a441-0a05-49c6-b6d6-59254aa8e0f6",
+        subscribe_key : "sub-c-0d9718ca-bc8c-11e2-b159-02ee2ddab7fe"
+    });
 }
 
 /** User authentication */
@@ -106,51 +115,51 @@ var user;
  * callback is a function taking a boolean indicating success (user logged in or was registered)
  */
 function loginOrRegister(username, password, callback) {
-	console.log("Login or register, username = " + username + ", password = " + password);
-	var tmpUser = { "username": username, "password": hex_md5(password) };
-	helper.authUsername = username;
-	helper.authPassword = hex_md5(password);
+    console.log("Login or register, username = " + username + ", password = " + password);
+    var tmpUser = { "username": username, "password": hex_md5(password) };
+    helper.authUsername = username;
+    helper.authPassword = hex_md5(password);
 
-	helper.searchDocuments(tmpUser, "users", function(resp) {
-		console.log("LOG IN Status: " + resp.httpStatus + ", EMsg: " + resp.errorMessage + ", Output: " + resp.outputString);
-		if (resp.callStatus) {
-			console.log("Successful search");
-			// Successful search
-			if (resp.outputData.length > 0) {
-				// Correct username and password
-				user = tmpUser;
-				if (localStorage)
-					localStorage["chatin_user"] = user;
-				console.log("Correct log in");
-				callback(true);
-				return;
-			}
-		}
+    helper.searchDocuments(tmpUser, "users", function(resp) {
+        console.log("LOG IN Status: " + resp.httpStatus + ", EMsg: " + resp.errorMessage + ", Output: " + resp.outputString);
+        if (resp.callStatus) {
+            console.log("Successful search");
+            // Successful search
+            if (resp.outputData.length > 0) {
+                // Correct username and password
+                user = tmpUser;
+                if (localStorage)
+                    localStorage["chatin_user"] = user;
+                console.log("Correct log in");
+                callback(true);
+                return;
+            }
+        }
 
-		// Failed to log in
-		console.log("Failed search/login -- trying to create a new user");
+        // Failed to log in
+        console.log("Failed search/login -- trying to create a new user");
 
-		delete helper.authUsername;
-		delete helper.authPassword;
-		// Create a new user
-		helper.insertDocument("users", tmpUser, null, function(resp) {
-			console.log("REGISTER Status: " + resp.httpStatus + ", EMsg: " + resp.errorMessage + ", Output: " + resp.outputString);
-			if (resp.callStatus) {
-				user = tmpUser;
-				helper.authUsername = user.username;
-				helper.authPassword = user.password;
-				if (localStorage)
-					localStorage["chatin_user"] = user;
-				console.log("Registered");
-				callback(true);
-				return;
-			} else {
-				console.log("Failed to register a new user");
-				callback(false);
-				return;
-			}
-		});
-	});
+        delete helper.authUsername;
+        delete helper.authPassword;
+        // Create a new user
+        helper.insertDocument("users", tmpUser, null, function(resp) {
+            console.log("REGISTER Status: " + resp.httpStatus + ", EMsg: " + resp.errorMessage + ", Output: " + resp.outputString);
+            if (resp.callStatus) {
+                user = tmpUser;
+                helper.authUsername = user.username;
+                helper.authPassword = user.password;
+                if (localStorage)
+                    localStorage["chatin_user"] = user;
+                console.log("Registered");
+                callback(true);
+                return;
+            } else {
+                console.log("Failed to register a new user");
+                callback(false);
+                return;
+            }
+        });
+    });
 }
 
 /**
@@ -159,69 +168,69 @@ function loginOrRegister(username, password, callback) {
  * callback is a function taking a boolean indicating success.
  */
 function checkIn(radius, callback) {
-	var pos = map.getCenter();
-	var loc = new CBHelperCurrentLocation(currentPosition.coords.latitude,
-		currentPosition.coords.longitude, currentPosition.coords.altitude);
-	helper.currentLocation = loc;
+    var pos = map.getCenter();
+    var loc = new CBHelperCurrentLocation(currentPosition.coords.latitude,
+        currentPosition.coords.longitude, currentPosition.coords.altitude);
+    helper.currentLocation = loc;
 
-	var checkIn = { "cb_owner_user": user.username, "radius": radius }; // location and owner are added automatically
-	
-	// myCheckIn is the JSON object sent over PubNub to nearby users
-	var myCheckIn = {
-		"cb_owner_user": user.username,
-		"radius": radius,
-		"cb_location": {
-			"lat": currentPosition.coords.latitude,
-			"lng": currentPosition.coords.longitude
-		}
-	};
+    var checkIn = { "cb_owner_user": user.username, "radius": radius }; // location and owner are added automatically
+    
+    // myCheckIn is the JSON object sent over PubNub to nearby users
+    var myCheckIn = {
+        "cb_owner_user": user.username,
+        "radius": radius,
+        "cb_location": {
+            "lat": currentPosition.coords.latitude,
+            "lng": currentPosition.coords.longitude
+        }
+    };
 
-	/* After we've checked in, we want to find users nearby who checked in and let them know.
-	 * This function is used as the callback to getNearbyCheckins. */
-	var informNearbyCheckins = function(success, checkins) {
-		if (!success || checkins.length == 0) return;
+    /* After we've checked in, we want to find users nearby who checked in and let them know.
+     * This function is used as the callback to getNearbyCheckins. */
+    var informNearbyCheckins = function(success, checkins) {
+        if (!success || checkins.length == 0) return;
 
-		for (var i = 0; i < checkins.length; i++) {
-			if (checkins[i].cb_owner_user != user.username) {
-				console.log("Informing "+checkins[i].cb_owner_user + " of my check in: " + myCheckIn);
-				pubnub.publish({
-					"channel": "nearby_" + checkins[i].cb_owner_user,
-					"message": JSON.stringify(myCheckIn)
-				});
-			}
-		}
-	}
+        for (var i = 0; i < checkins.length; i++) {
+            if (checkins[i].cb_owner_user != user.username) {
+                console.log("Informing "+checkins[i].cb_owner_user + " of my check in: " + myCheckIn);
+                pubnub.publish({
+                    "channel": "nearby_" + checkins[i].cb_owner_user,
+                    "message": JSON.stringify(myCheckIn)
+                });
+            }
+        }
+    }
 
-	var search = { "cb_owner_user": user.username };
-	// Check if this user already has a check in, if so, move it
-	helper.searchDocuments(search, "checkins", function(resp) {
-		if (resp.callStatus && resp.outputData.length > 0) {
-			// Update existing check in
-			helper.updateDocument(checkIn, search, "checkins", null, function(updResp) {
-				if (updResp.callStatus) {
-					console.log("Updated existing checkin");
-					getNearbyCheckins(radius, informNearbyCheckins);
-					callback(true);
-				} else {
-					console.log("Failed to update existing checkin");
-					callback(false);
-				}										
-			});
-		} else {
-			// No existing check in
-			helper.insertDocument("checkins", checkIn, null, function(resp) {
-				console.log("INSERT CHECK IN Status: " + resp.httpStatus + ", EMsg: " + resp.errorMessage + ", Output: " + resp.outputString);
-				if (resp.callStatus) {
-					console.log("Checked in at " + pos.toString());
-					getNearbyCheckins(radius, informNearbyCheckins);
-					callback(true);
-				} else {
-					console.log("Failed to check in");
-					callback(false);
-				}
-			});
-		}
-	});
+    var search = { "cb_owner_user": user.username };
+    // Check if this user already has a check in, if so, move it
+    helper.searchDocuments(search, "checkins", function(resp) {
+        if (resp.callStatus && resp.outputData.length > 0) {
+            // Update existing check in
+            helper.updateDocument(checkIn, search, "checkins", null, function(updResp) {
+                if (updResp.callStatus) {
+                    console.log("Updated existing checkin");
+                    getNearbyCheckins(radius, informNearbyCheckins);
+                    callback(true);
+                } else {
+                    console.log("Failed to update existing checkin");
+                    callback(false);
+                }                                       
+            });
+        } else {
+            // No existing check in
+            helper.insertDocument("checkins", checkIn, null, function(resp) {
+                console.log("INSERT CHECK IN Status: " + resp.httpStatus + ", EMsg: " + resp.errorMessage + ", Output: " + resp.outputString);
+                if (resp.callStatus) {
+                    console.log("Checked in at " + pos.toString());
+                    getNearbyCheckins(radius, informNearbyCheckins);
+                    callback(true);
+                } else {
+                    console.log("Failed to check in");
+                    callback(false);
+                }
+            });
+        }
+    });
 }
 
 /**
@@ -230,34 +239,34 @@ function checkIn(radius, callback) {
  * (which is empty if the call failed)
  */
 function getNearbyCheckins(radius, callback) {
-	var pos = map.getCenter();
-	
-	var search = {
-		"cb_location": {
-			"$near": [currentPosition.coords.latitude, currentPosition.coords.longitude],
-			"$maxDistance": radius
-		}
-	};
-	helper.searchDocuments(search, "checkins", function(resp) {
-		console.log("GET NEARBY CHECK INS Status: " + resp.httpStatus + ", EMsg: " + resp.errorMessage + ", Output: " + resp.outputString);
-		if (resp.callStatus) {
-			console.log("Received checkins");
-			callback(true, resp.outputData);
-		} else {
-			callback(false, []);
-		}
-	});
+    var pos = map.getCenter();
+    
+    var search = {
+        "cb_location": {
+            "$near": [currentPosition.coords.latitude, currentPosition.coords.longitude],
+            "$maxDistance": radius
+        }
+    };
+    helper.searchDocuments(search, "checkins", function(resp) {
+        console.log("GET NEARBY CHECK INS Status: " + resp.httpStatus + ", EMsg: " + resp.errorMessage + ", Output: " + resp.outputString);
+        if (resp.callStatus) {
+            console.log("Received checkins");
+            callback(true, resp.outputData);
+        } else {
+            callback(false, []);
+        }
+    });
 }
 
 /**
  * Automatically called by PubNub when a new checkin has been received from someone nearby.
  */
 function receivedNearbyCheckin(checkin) {
-	console.log("Received nearby checkin " + checkin);
-	//alert("GOT CHECKIN "+checkin);
-	var checkinObj = JSON.parse(checkin);
+    console.log("Received nearby checkin " + checkin);
+    //alert("GOT CHECKIN "+checkin);
+    var checkinObj = JSON.parse(checkin);
 
-	// TODO: Update map
+    // TODO: Update map
 }
 
 /**
@@ -267,16 +276,16 @@ function receivedNearbyCheckin(checkin) {
  * messageCallback is a function taking a string and is called for every new message.
  */
 function getChat(checkIn, historyCallback, messageCallback) {
-	var channelName = checkIn.cb_owner + '_' + hex_md5(checkIn.cb_location.lat + ',' + checkIn.cb_location.lng);
-	pubnub.subscribe({
-		'channel': channelName,
-		'callback': messageCallback
-	});
-	pubnub.history({
-		'channel': channelName,
-		'count': 20,
-		'callback': historyCallback
-	});
+    var channelName = checkIn.cb_owner + '_' + hex_md5(checkIn.cb_location.lat + ',' + checkIn.cb_location.lng);
+    pubnub.subscribe({
+        'channel': channelName,
+        'callback': messageCallback
+    });
+    pubnub.history({
+        'channel': channelName,
+        'count': 20,
+        'callback': historyCallback
+    });
 }
 
 /**
@@ -284,11 +293,11 @@ function getChat(checkIn, historyCallback, messageCallback) {
  * and cb_owner). The message is automatically prefixed with the user's username.
  */
 function sendMessageToChat(checkIn, message) {
-	var channelName = checkIn.cb_owner + '_' + hex_md5(checkIn.cb_location.lat + ',' + checkIn.cb_location.lng);
-	pubnub.publish({
-		'channel': channelName,
-		'message': user.username + ': ' + message
-	});
+    var channelName = checkIn.cb_owner + '_' + hex_md5(checkIn.cb_location.lat + ',' + checkIn.cb_location.lng);
+    pubnub.publish({
+        'channel': channelName,
+        'message': user.username + ': ' + message
+    });
 }
 
 /**
@@ -296,15 +305,15 @@ function sendMessageToChat(checkIn, message) {
  * and an array with friends' user names (which is empty if the call failed)
  */
 function getFriends(callback) {
-	helper.searchDocuments({ "username": user.username }, "users", function(resp) {
-		console.log("GET FRIENDS Status: " + resp.httpStatus + ", EMsg: " + resp.errorMessage + ", Output: " + resp.outputString);
-		if (resp.callStatus && resp.outputData.length > 0) {
-			console.log("Received friends");
-			callback(true, resp.outputData[0].friends);
-		} else {
-			callback(false, []);
-		}
-	});
+    helper.searchDocuments({ "username": user.username }, "users", function(resp) {
+        console.log("GET FRIENDS Status: " + resp.httpStatus + ", EMsg: " + resp.errorMessage + ", Output: " + resp.outputString);
+        if (resp.callStatus && resp.outputData.length > 0) {
+            console.log("Received friends");
+            callback(true, resp.outputData[0].friends);
+        } else {
+            callback(false, []);
+        }
+    });
 }
 
 /**
@@ -313,39 +322,56 @@ function getFriends(callback) {
  * callback is a function taking a boolean indicating success.
  */
 function addFriend(friendUsername, callback) {
-	helper.searchDocuments({ "username": user.username }, "users", function(resp) {
-		if (!resp.callStatus)
-			return callback(false);
+    helper.searchDocuments({ "username": user.username }, "users", function(resp) {
+        if (!resp.callStatus)
+            return callback(false);
 
-		var newUser = resp.outputData[0];
-		newUser.friends.push(friendUsername);
-		helper.updateDocument(newUser, { "username": user.username }, "users", null, function(updResp) {
-			if (!updResp.callStatus)
-				return callback(false);
-			console.log("Successfully added friend");
-			callback(true);
-		});
-	});
+        var newUser = resp.outputData[0];
+        newUser.friends.push(friendUsername);
+        helper.updateDocument(newUser, { "username": user.username }, "users", null, function(updResp) {
+            if (!updResp.callStatus)
+                return callback(false);
+            console.log("Successfully added friend");
+            callback(true);
+        });
+    });
 }
 
 
 var currentPosition = null;
 function setupMap(event,ui) {
-	var pos;
-	if (navigator.geolocation) {
-		navigator.geolocation.getCurrentPosition(function(position) {
-			currentPosition = position;
-			pos = new google.maps.LatLng(position.coords.latitude,position.coords.longitude);
-			if (map) map.setCenter(pos);
-		});
-	}
-	currentPosition = { "coords": { "latitude": 59.347283, "longitude": 18.073668}};
-	pos = new google.maps.LatLng(59.347283,18.073668);
+    var pos;
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            currentPosition = position;
+            pos = new google.maps.LatLng(position.coords.latitude,position.coords.longitude);
+            if (map) map.setCenter(pos);
+        });
+    }
+    currentPosition = { "coords": { "latitude": 59.347283, "longitude": 18.073668}};
+    pos = new google.maps.LatLng(59.347283,18.073668);
 
-	var mapOptions = {
-		center: pos,
-		zoom: 18,
-		mapTypeId: google.maps.MapTypeId.ROADMAP
-	};
-	map = new google.maps.Map(document.getElementById("map-canvas"), mapOptions);
+    var mapOptions = {
+        center: pos,
+        zoom: 18,
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+    };
+    map = new google.maps.Map(document.getElementById("map-canvas"), mapOptions);
+    putCheckinsOnMap();
+}
+
+function putCheckinsOnMap() {
+    getNearbyCheckins(100, function (success, checkins) {
+        if (success) {
+            var pos;
+            for (var i = checkins.length - 1; i >= 0; i--) {
+                pos = new google.maps.LatLng(checkins[i].cb_location.lat, checkins[i].cb_location.lng);
+                var marker = new google.maps.Marker({
+                    position: pos,
+                    map: map,
+                    title:"Hi"
+                });
+            }
+        }
+    });
 }
