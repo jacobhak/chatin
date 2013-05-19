@@ -42,11 +42,36 @@ function handleMap() {
 }
 
 function handleFriends() {
-	$.mobile.changePage("#friends-page");
+	getFriends(function(success, friends) {
+		if (!success) {
+			alert("Failed to get friends list");
+			return;
+		}
+
+		$("#friends-content ul").children().remove();
+		for (var i = 0; i < friends.length; i++)
+			$("#friends-content ul").append('<li>' + friends[i] + '</li>');
+
+		$.mobile.changePage("#friends-page");
+		$("#friends-content ul").listview('refresh');
+	});
 }
 
 function handleAddFriend() {
 	$.mobile.changePage("#addFriend-page","slideright");
+	$("#confirmFriendButton").off("click").on("click", function() {
+		if ($("#friendName").val().length == 0) 
+			return;
+
+		addFriend($("#friendName").val(), function(success) {
+			if (!success)
+				alert("Failed to add friend");
+			else
+				alert("Friend added");
+
+			handleFriends();
+		});
+	})
 }
 
 function initialize () {
@@ -233,6 +258,37 @@ function receivedNearbyCheckin(checkin) {
 	var checkinObj = JSON.parse(checkin);
 
 	// TODO: Update map
+}
+
+/**
+ * Gets the chat for a given checkIn object. The checkIn object must have cb_location and cb_owner
+ * properties. historyCallback is a function called by PubNub when fetching the initial chat history, and
+ * takes an array where the first element is itself an array of previous messages.
+ * messageCallback is a function taking a string and is called for every new message.
+ */
+function getChat(checkIn, historyCallback, messageCallback) {
+	var channelName = checkIn.cb_owner + '_' + hex_md5(checkIn.cb_location.lat + ',' + checkIn.cb_location.lng);
+	pubnub.subscribe({
+		'channel': channelName,
+		'callback': messageCallback
+	});
+	pubnub.history({
+		'channel': channelName,
+		'count': 20,
+		'callback': historyCallback
+	});
+}
+
+/**
+ * Given a checkIn and a string message, sends the message to the chat for that checkIn (must have cb_location
+ * and cb_owner). The message is automatically prefixed with the user's username.
+ */
+function sendMessageToChat(checkIn, message) {
+	var channelName = checkIn.cb_owner + '_' + hex_md5(checkIn.cb_location.lat + ',' + checkIn.cb_location.lng);
+	pubnub.publish({
+		'channel': channelName,
+		'message': user.username + ': ' + message
+	});
 }
 
 /**
