@@ -2,6 +2,7 @@
     Main js file
 */
 var map;
+var markers = {}; // Object linking checkin user name => marker object
 
 /** Cloudbase helper object */
 var helper;
@@ -265,8 +266,16 @@ function receivedNearbyCheckin(checkin) {
     console.log("Received nearby checkin " + checkin);
     //alert("GOT CHECKIN "+checkin);
     var checkinObj = JSON.parse(checkin);
+	var pos = new google.maps.LatLng(checkinObj.cb_location.lat, checkinObj.cb_location.lng);
+    var marker = new google.maps.Marker({
+        position: pos,
+        map: map,
+        title:"Hi"
+    });
 
-    // TODO: Update map
+    if (markers[checkin.cb_owner_user] != null)
+    	markers[checkin.cb_owner_user].setMap(null);
+    markers[checkin.cb_owner_user] = marker;
 }
 
 /**
@@ -276,7 +285,7 @@ function receivedNearbyCheckin(checkin) {
  * messageCallback is a function taking a string and is called for every new message.
  */
 function getChat(checkIn, historyCallback, messageCallback) {
-    var channelName = checkIn.cb_owner + '_' + hex_md5(checkIn.cb_location.lat + ',' + checkIn.cb_location.lng);
+    var channelName = checkIn.cb_owner_user + '_' + hex_md5(checkIn.cb_location.lat + ',' + checkIn.cb_location.lng);
     pubnub.subscribe({
         'channel': channelName,
         'callback': messageCallback
@@ -293,7 +302,7 @@ function getChat(checkIn, historyCallback, messageCallback) {
  * and cb_owner). The message is automatically prefixed with the user's username.
  */
 function sendMessageToChat(checkIn, message) {
-    var channelName = checkIn.cb_owner + '_' + hex_md5(checkIn.cb_location.lat + ',' + checkIn.cb_location.lng);
+    var channelName = checkIn.cb_owner_user + '_' + hex_md5(checkIn.cb_location.lat + ',' + checkIn.cb_location.lng);
     pubnub.publish({
         'channel': channelName,
         'message': user.username + ': ' + message
@@ -371,6 +380,18 @@ function putCheckinsOnMap() {
                     map: map,
                     title:"Hi"
                 });
+                if (checkins[i].cb_owner_user == user.username) {
+                	// If this is our marker, we want a different icon
+                	marker.setIcon({
+                		"path": google.maps.SymbolPath.CIRCLE,
+                		"scale": 14,
+                		"strokeColor": "#ff0000",
+                		"strokeWeight": 3
+                	})
+                }
+                if (markers[checkins[i].cb_owner_user] != null)
+                	markers[checkins[i].cb_owner_user].setMap(null);
+               	markers[checkins[i].cb_owner_user] = marker;
             }
         }
     });
