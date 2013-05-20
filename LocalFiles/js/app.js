@@ -49,6 +49,21 @@ function handleMap() {
     $.mobile.changePage("#map-page");
 }
 
+function handleChats() {
+    $.mobile.changePage("#chats-page");
+    getNearbyCheckins(100, function(success, checkins){
+        if (!success) {
+            alert("Failed to get nearby checkins");
+            return;
+        }
+        $("#chats-content ul").children().remove();
+        for (var i = 0; i < checkins.length; i++) {
+            $("#chats-content ul").append('<li>'+ checkins[i].cb_owner_user + "'s chat" + '<li>');
+        }
+        $("#chats-content ul").listview('refresh');
+    });
+}
+
 function handleFriends() {
     $.mobile.changePage("#friends-page");
     getFriends(function(success, friends) {
@@ -90,8 +105,10 @@ function initialize () {
     $(".meButton").on("click", handleMe);
     $(".mapButton").on("click", handleMap);
     $(".friendsButton").on("click", handleFriends);
+    $(".chatsButton").on("click", handleChats);
     $("#addFriendButton").on("click", handleAddFriend);
     $("#checkInButton").on("click", handleCheckIn);
+
 }
 
 function initCB() {
