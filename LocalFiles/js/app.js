@@ -58,7 +58,7 @@ function handleChats() {
         }
         $("#chats-content ul").children().remove();
         for (var i = 0; i < checkins.length; i++) {
-            $("#chats-content ul").append('<li>'+ checkins[i].cb_owner_user + "'s chat" + '<li>');
+            $("#chats-content ul").append('<li>'+ checkins[i].cb_owner_user + "'s chat" + '</li>');
         }
         $("#chats-content ul").listview('refresh');
     });
