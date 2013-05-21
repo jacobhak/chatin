@@ -71,11 +71,11 @@ function handleChats() {
 function setupChatView(checkin) {
     $.mobile.changePage("#chat-view", "slideright");
     updateChatView(checkin);
-    $("#sendMessageButton").on("click", function() {
+    $("#sendMessageButton").off("click").on("click", function() {
         if ($("#chatText").val().length !== 0) {
             sendMessageToChat(checkin, $("#chatText").val());
             $("#chatText").val("");
-            updateChatView(checkin);
+            //updateChatView(checkin);
         }
     });
 }
@@ -89,6 +89,8 @@ function updateChatView(checkin) {
         $("#chat-content ul").listview("refresh");
     }, function(message){
         console.log(message);
+        $("#chat-content ul").append('<li>' + message + '</li>');
+        $("#chat-content ul").listview("refresh");
     });
 }
 
