@@ -58,9 +58,37 @@ function handleChats() {
         }
         $("#chats-content ul").children().remove();
         for (var i = 0; i < checkins.length; i++) {
-            $("#chats-content ul").append('<li>'+ checkins[i].cb_owner_user + "'s chat" + '</li>');
+            $("#chats-content ul").append('<li id="chat'+i+'">'+ checkins[i].cb_owner_user + "'s chat" + '</li>');
         }
+        $("#chats-content ul").children().on("click", function(e){
+            var jodu = e.target.id.slice(-1, e.target.id.length);
+            setupChatView(checkins[jodu]);
+        });
         $("#chats-content ul").listview('refresh');
+    });
+}
+
+function setupChatView(checkin) {
+    $.mobile.changePage("#chat-view", "slideright");
+    updateChatView(checkin);
+    $("#sendMessageButton").on("click", function() {
+        if ($("#chatText").val().length !== 0) {
+            sendMessageToChat(checkin, $("#chatText").val());
+            $("#chatText").val("");
+            updateChatView(checkin);
+        }
+    });
+}
+
+function updateChatView(checkin) {
+    getChat(checkin,function(history){
+        console.log(history);
+        $("#chat-content ul").children().remove();
+        for (var i = 0; i < history[0].length; i++)
+            $("#chat-content ul").append('<li>'+ history[0][i] + '</li>');
+        $("#chat-content ul").listview("refresh");
+    }, function(message){
+        console.log(message);
     });
 }
 
