@@ -12,7 +12,7 @@ var pubnub;
 
 function handleLogin() {
     var username = $("#email").val();
-    var password = $("#password").val();
+    var password = hex_md5($("#password").val());
     console.log("got user: "+username+" pass: "+password);
     loginOrRegister(username, password, function(success){
         if (success) {
@@ -38,6 +38,8 @@ function handleCheckIn () {
 }
 
 function handleLogout() {
+	delete localStorage["chatin_username"];
+	delete localStorage["chatin_password"];
     $.mobile.changePage("#loginOrRegister-page");
 }
 
@@ -138,7 +140,6 @@ function initialize () {
     $(".chatsButton").on("click", handleChats);
     $("#addFriendButton").on("click", handleAddFriend);
     $("#checkInButton").on("click", handleCheckIn);
-
 }
 
 function initCB() {
@@ -152,21 +153,39 @@ function initCB() {
         publish_key   : "pub-c-ed04a441-0a05-49c6-b6d6-59254aa8e0f6",
         subscribe_key : "sub-c-0d9718ca-bc8c-11e2-b159-02ee2ddab7fe"
     });
+
+    if (localStorage && localStorage["chatin_username"]) {
+    	loginOrRegister(localStorage["chatin_username"], localStorage["chatin_password"], function(success) {
+    		if (success) {
+    		    $.mobile.changePage("#map-page");
+
+    		    // Subscribe to nearby checkins in pubnub
+    		    pubnub.subscribe({
+    		        "channel": "nearby_" + localStorage["chatin_username"],
+    		        "callback": receivedNearbyCheckin
+    		    });
+
+    		} else {
+    		    delete localStorage["chatin_username"];
+    		    delete localStorage["chatin_password"];
+    		}
+    	});
+    }
 }
 
 /** User authentication */
 var user;
 
 /**
- * Attempts to log in as the given user in username with password.
+ * Attempts to log in as the given user in username with MD5'd password.
  * If there is no user with that username, a new one is created.
  * callback is a function taking a boolean indicating success (user logged in or was registered)
  */
 function loginOrRegister(username, password, callback) {
     console.log("Login or register, username = " + username + ", password = " + password);
-    var tmpUser = { "username": username, "password": hex_md5(password) };
+    var tmpUser = { "username": username, "password": password };
     helper.authUsername = username;
-    helper.authPassword = hex_md5(password);
+    helper.authPassword = password;
 
     helper.searchDocuments(tmpUser, "users", function(resp) {
         console.log("LOG IN Status: " + resp.httpStatus + ", EMsg: " + resp.errorMessage + ", Output: " + resp.outputString);
@@ -176,8 +195,10 @@ function loginOrRegister(username, password, callback) {
             if (resp.outputData.length > 0) {
                 // Correct username and password
                 user = tmpUser;
-                if (localStorage)
-                    localStorage["chatin_user"] = user;
+                if (localStorage) {
+                    localStorage["chatin_username"] = user.username;
+                    localStorage["chatin_password"] = user.password;
+                }
                 console.log("Correct log in");
                 callback(true);
                 return;
@@ -196,8 +217,10 @@ function loginOrRegister(username, password, callback) {
                 user = tmpUser;
                 helper.authUsername = user.username;
                 helper.authPassword = user.password;
-                if (localStorage)
-                    localStorage["chatin_user"] = user;
+                if (localStorage) {
+                    localStorage["chatin_username"] = user.username;
+                    localStorage["chatin_password"] = user.password;
+                }
                 console.log("Registered");
                 callback(true);
                 return;
