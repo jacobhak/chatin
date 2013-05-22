@@ -445,6 +445,8 @@ function setupMap(event,ui) {
     putCheckinsOnMap();
 }
 
+var infowindow = new google.maps.InfoWindow();
+
 function putCheckinsOnMap() {
     getNearbyCheckins(100, function (success, checkins) {
         if (success) {
@@ -468,7 +470,15 @@ function putCheckinsOnMap() {
                 if (markers[checkins[i].cb_owner_user] != null)
                 	markers[checkins[i].cb_owner_user].setMap(null);
                	markers[checkins[i].cb_owner_user] = marker;
+                makeInfoWindowEvent(map, infowindow, checkins[i].cb_owner_user, marker);
             }
+
         }
     });
+}
+function makeInfoWindowEvent(map, infowindow, contentString, marker) {
+  google.maps.event.addListener(marker, 'click', function() {
+    infowindow.setContent(contentString);
+    infowindow.open(map, marker);
+  });
 }
