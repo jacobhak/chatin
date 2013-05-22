@@ -89,10 +89,16 @@ function updateChatView(checkin) {
         for (var i = 0; i < history[0].length; i++)
             $("#chat-content ul").append('<li>'+ history[0][i] + '</li>');
         $("#chat-content ul").listview("refresh");
+        $("html, body").animate({
+	        	scrollTop: $(document).height()
+	        }, 400);
     }, function(message){
         console.log(message);
         $("#chat-content ul").append('<li>' + message + '</li>');
         $("#chat-content ul").listview("refresh");
+        $("html, body").animate({
+	        	scrollTop: $(document).height() - $(window).height()
+	        }, 200);
     });
 }
 
