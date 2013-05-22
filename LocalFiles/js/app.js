@@ -60,7 +60,7 @@ function handleChats() {
         }
         $("#chats-content ul").children().remove();
         for (var i = 0; i < checkins.length; i++) {
-            $("#chats-content ul").append('<li id="chat'+i+'">'+ checkins[i].cb_owner_user + "'s chat" + '</li>');
+            $("#chats-content ul").append('<li><a href="#" id="chat'+i+'">'+ checkins[i].cb_owner_user + "'s chat" + '</a></li>');
         }
         $("#chats-content ul").children().on("click", function(e){
             var jodu = e.target.id.slice(-1, e.target.id.length);
